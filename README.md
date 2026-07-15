@@ -14,7 +14,8 @@ npx skills add bholmesdev/llm-knowledge-base-skills
 
 | Skill | What it does |
 | --- | --- |
-| [enrich-note](skills/enrich-note/SKILL.md) | Enrich one note with topic tags (from a shared [tag registry](skills/enrich-note/references/tags.md)), source attribution, and links to related notes. |
+| [clip-link](skills/clip-link/SKILL.md) | Turn a link-only note (a bare URL or lone markdown/org link) into a full web clipping following [Obsidian Web Clipper](https://obsidian.md/clipper) conventions — same frontmatter, same markdown rendering of the page. |
+| [enrich-note](skills/enrich-note/SKILL.md) | Enrich one note with topic tags (from a shared [tag registry](skills/enrich-note/references/tags.md)), source attribution, and links to related notes. Handles markdown, plain-text, and org-mode notes. |
 | [enrich-notes-loop](skills/enrich-notes-loop/SKILL.md) | Run enrich-note across every un-enriched note in the vault, unattended. Uses an `enrichedAt` frontmatter stamp to skip finished notes. |
 | [refresh-wiki](skills/refresh-wiki/SKILL.md) | Maintain every llm-wiki under `wikis/`: ingest new source notes, update entity/concept pages, and lint for stale claims and orphan pages. |
 | [enrich-notes-loop-cloud](skills/enrich-notes-loop-cloud/SKILL.md) | enrich-notes-loop wrapped for scheduled cloud runs: sync an Obsidian vault down, enrich, sync back up. |
@@ -30,7 +31,7 @@ your-vault/
 └── tags.md    # the tag registry — seeded by enrich-note on first run
 ```
 
-Tweak the skills to taste if your layout differs.
+Tweak the skills to taste if your layout differs. Notes don't have to be markdown: plain-text and org-mode notes are enriched with their own conventions, and notes that contain only a link get expanded into full web clippings by clip-link.
 
 ## Visualizations
 

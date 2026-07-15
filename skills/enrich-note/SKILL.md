@@ -10,6 +10,14 @@ If the frontmatter already has `enrichedAt`, the note is done — skip it.
 
 Do the three steps below, then stamp `enrichedAt` with the current ISO timestamp.
 
+## 0. Note format
+
+Don't assume markdown-with-frontmatter — notes may also be plain text or org-mode:
+
+- **Markdown or plain text** (`.md`, `.txt`): metadata goes in YAML frontmatter as described below; add the frontmatter block if the note doesn't have one yet.
+- **Org-mode** (`.org`): don't bolt YAML onto org. Use org conventions for the same metadata: `#+filetags: :tag-one:tag-two:` for tags, `#+source:` / `#+url:` keyword lines for attribution, a trailing `* Related` heading with `[[file:path.org][Alias]]` links, and `#+enriched_at: <ISO timestamp>` as the done-stamp instead of `enrichedAt`.
+- **Link-only notes** (the content is just a URL or a lone markdown/org link): run [clip-link](../clip-link/SKILL.md) first to expand it into a web clipping, then enrich the result.
+
 ## 1. Tags
 
 Read the tag registry at the vault root (`tags.md`) first. If it doesn't exist yet, create it by copying the starter seed from [references/tags.md](references/tags.md). The registry lives in the vault — not this skill — so your tags persist and sync no matter where the skill runs from.
