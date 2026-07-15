@@ -16,26 +16,57 @@
 				const pretty = (d) =>
 					`${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`
 
-				// Derive a UTC date string from frontmatter, preferring updatedAtISO.
-				function dateKeyFromProps(props) {
-					if (props && typeof props.updatedAtISO === 'string' && props.updatedAtISO.length >= 10) {
-						return props.updatedAtISO.slice(0, 10)
-					}
-					if (props && typeof props.updatedAt === 'number') {
-						return key(new Date(props.updatedAt))
+				// A day key (YYYY-MM-DD) from an epoch-ms number or a date-ish string.
+				function isoDay(v) {
+					if (typeof v === 'number') return key(new Date(v))
+					if (typeof v === 'string') {
+						const m = v.match(/(\d{4})-(\d{2})-(\d{2})/)
+						if (m) return `${m[1]}-${m[2]}-${m[3]}`
 					}
 					return null
 				}
 
-				// First non-empty line of the body makes a decent title.
-				function titleFromBody(body, fallback) {
-					if (typeof body === 'string') {
-						for (const raw of body.split('\n')) {
-							const line = raw.replace(/^#+\s*/, '').trim()
-							if (line) return line
+				// Strip a leading YAML frontmatter block so it doesn't become the title.
+				function stripHeader(t) {
+					if (typeof t !== 'string') return ''
+					if (t.startsWith('---')) {
+						const e = t.indexOf('\n---', 3)
+						if (e !== -1) { const a = t.indexOf('\n', e + 1); return t.slice(a + 1) }
+					}
+					return t
+				}
+
+				// Prefer Hubble's file metadata (updatedAt*), then fall back to
+				// frontmatter/org date fields so plain-text and org notes still land.
+				function dateKeyFromFile(file, path) {
+					const p = file && file.properties
+					if (p) {
+						if (typeof p.updatedAtISO === 'string' && p.updatedAtISO.length >= 10) return p.updatedAtISO.slice(0, 10)
+						if (typeof p.updatedAt === 'number') return key(new Date(p.updatedAt))
+						for (const f of ['enrichedAt', 'created', 'published', 'date']) {
+							const d = isoDay(p[f]); if (d) return d
 						}
 					}
-					return fallback
+					const body = file && typeof file.body === 'string' ? file.body : ''
+					let m = body.match(/^#\+(?:enriched_at|created|date):\s*(.+)$/im)
+					if (m) { const d = isoDay(m[1].trim()); if (d) return d }
+					m = body.match(/^\s*(?:enrichedAt|created|published|date):\s*["']?([^"'\n]+)/im)
+					if (m) { const d = isoDay(m[1].trim()); if (d) return d }
+					return null
+				}
+
+				// Title: frontmatter/org title, else the first real line of the body.
+				function titleFromFile(file, path) {
+					const p = file && file.properties
+					if (p && typeof p.title === 'string' && p.title.trim()) return p.title.trim()
+					const body = file && typeof file.body === 'string' ? file.body : ''
+					let m = body.match(/^#\+title:\s*(.+)$/im)
+					if (m && m[1].trim()) return m[1].trim()
+					for (const raw of stripHeader(body).split('\n')) {
+						const line = raw.replace(/^#+\s*/, '').trim()
+						if (line && line !== '---') return line
+					}
+					return (path.split('/').pop() || '').replace(/\.(md|txt|org)$/, '')
 				}
 
 				Alpine.data('burndown', () => ({
@@ -52,11 +83,20 @@
 
 					async init() {
 						try {
-							let files = await hubble.files.list('raw/**/*.md')
-							if (!files.length) files = await hubble.files.list('raw/*.md')
-							if (!files.length) {
-								const all = await hubble.files.list('**/*.md')
-								files = all.filter((f) => f.path.startsWith('raw/'))
+							// Every note in the vault — markdown, plain text, and org —
+							// skipping the generated wikis/ layer and dotfiles.
+							const lists = await Promise.all(
+								['md', 'txt', 'org'].map((e) => hubble.files.list('**/*.' + e).catch(() => []))
+							)
+							const seen = new Set()
+							const files = []
+							for (const f of lists.flat()) {
+								const path = typeof f === 'string' ? f : f.path
+								if (!path || seen.has(path)) continue
+								if (path.startsWith('.') || path.includes('/.')) continue
+								if (/(^|\/)wikis\//.test(path)) continue
+								seen.add(path)
+								files.push({ path })
 							}
 
 							const reads = await Promise.all(files.map((f) => hubble.files.safeRead(f.path)))
@@ -65,13 +105,13 @@
 								const res = reads[i]
 								if (!res.ok) continue
 								const file = res.value
-								const dk = dateKeyFromProps(file.properties)
+								const dk = dateKeyFromFile(file, files[i].path)
 								if (!dk) continue
 								if (!byDate[dk]) byDate[dk] = { count: 0, notes: [] }
 								byDate[dk].count++
 								byDate[dk].notes.push({
-									title: titleFromBody(file.body, files[i].name.replace(/\.md$/, '')),
-									path: file.path,
+									title: titleFromFile(file, files[i].path),
+									path: files[i].path,
 								})
 							}
 

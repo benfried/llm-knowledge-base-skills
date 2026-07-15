@@ -38,13 +38,13 @@
 			function tokens(slug) { return slug.split("-").filter((x) => x && isNaN(x) && x.length > 2 && !STOP.has(x)); }
 			function titleCase(slug) { return slug.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase()).replace(/\bAi\b/g, "AI").replace(/\bPlg\b/g, "PLG"); }
 			function escapeHtml(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
-			function wikiKey(s) { return s.toLowerCase().trim().replace(/\.md$/, "").replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/-[a-z0-9]{6,10}$/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""); }
+			function wikiKey(s) { return s.toLowerCase().trim().replace(/\.(md|txt|org)$/, "").replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/-[a-z0-9]{6,10}$/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""); }
 			const wikiIndex = new Map();
 			function addWikiKey(key, node) { if (key && !wikiIndex.has(key)) wikiIndex.set(key, node); }
 			function buildWikiIndex() {
 				wikiIndex.clear();
 				for (const node of nodes) {
-					const file = node.path.split("/").pop().replace(/\.md$/, "");
+					const file = node.path.split("/").pop().replace(/\.(md|txt|org)$/, "");
 					addWikiKey(wikiKey(node.title), node);
 					addWikiKey(wikiKey(file), node);
 					addWikiKey(file.toLowerCase(), node);
@@ -83,7 +83,12 @@
 				}
 				close(); return html;
 			}
-			function stripFm(t) { if (t.startsWith("---")) { const e = t.indexOf("\n---", 3); if (e !== -1) { const a = t.indexOf("\n", e + 1); return t.slice(a + 1); } } return t; }
+			function stripFm(t) {
+				if (typeof t !== "string") return "";
+				if (t.startsWith("---")) { const e = t.indexOf("\n---", 3); if (e !== -1) { const a = t.indexOf("\n", e + 1); return t.slice(a + 1); } return t; }
+				if (/^\s*#\+\w/.test(t)) { const ls = t.split("\n"); let i = 0; while (i < ls.length && (/^\s*#\+\w/.test(ls[i]) || !ls[i].trim())) i++; return ls.slice(i).join("\n"); }
+				return t;
+			}
 
 			function probe(cls, prop) {
 				const el = document.createElement("span"); el.className = cls; el.style.position = "absolute"; el.style.opacity = "0";
@@ -130,26 +135,70 @@
 			function topicTag(props) {
 				return noteTags(props).find((t) => !MEDIUM_TAGS.has(t)) || null;
 			}
+			// Tags from a YAML frontmatter block (inline array, space list, or block list).
+			function fmTags(body) {
+				if (typeof body !== "string" || !body.startsWith("---")) return [];
+				const e = body.indexOf("\n---", 3); if (e === -1) return [];
+				const lines = body.slice(3, e).split("\n");
+				const out = [];
+				for (let i = 0; i < lines.length; i++) {
+					const m = lines[i].match(/^tags:[ \t]*(.*)$/);
+					if (!m) continue;
+					const inline = m[1].trim();
+					if (inline.startsWith("[")) inline.replace(/[[\]]/g, "").split(",").forEach((x) => out.push(x.replace(/["']/g, "")));
+					else if (inline && inline !== "|" && inline !== ">") inline.split(/[,\s]+/).forEach((x) => out.push(x));
+					for (let j = i + 1; j < lines.length; j++) {
+						const mm = lines[j].match(/^[ \t]+-[ \t]*["']?([^"'\n]+?)["']?\s*$/);
+						if (mm) out.push(mm[1]); else if (/^\S/.test(lines[j])) break;
+					}
+					break;
+				}
+				return out.map((t) => t.toLowerCase().trim().replace(/^#/, "")).filter(Boolean);
+			}
+			// Tags from an org #+filetags: / #+tags: line (colon- or space-separated).
+			function orgTags(body) {
+				if (typeof body !== "string") return [];
+				const m = body.match(/^#\+(?:filetags|tags):\s*(.+)$/im);
+				if (!m) return [];
+				return m[1].split(/[:\s]+/).map((t) => t.toLowerCase().trim().replace(/^#/, "")).filter(Boolean);
+			}
+			function tagsFromFile(file, path) {
+				let tags = noteTags(file && file.properties);
+				if (tags.length) return tags;
+				const body = file && typeof file.body === "string" ? file.body : "";
+				return /\.org$/.test(path) ? orgTags(body) : fmTags(body);
+			}
+			function firstTopic(tags) { return tags.find((t) => !MEDIUM_TAGS.has(t)) || null; }
 
 			async function build() {
 				let files = [];
-				try { files = await hubble.files.list("**/*.md"); }
+				try {
+					const lists = await Promise.all(
+						["md", "txt", "org"].map((e) => hubble.files.list("**/*." + e).catch(() => []))
+					);
+					files = lists.flat();
+				}
 				catch (e) { document.getElementById("boot").textContent = "The sky is unreachable here."; return; }
 
-				const paths = files.map((f) => (typeof f === "string" ? f : f.path)).filter((p) => !p.startsWith(".") && !p.includes("/."));
+				// Whole vault across markdown/plain-text/org, minus dotfiles and the generated wikis/ layer.
+				const seenPaths = new Set();
+				const paths = files
+					.map((f) => (typeof f === "string" ? f : f.path))
+					.filter((p) => p && !p.startsWith(".") && !p.includes("/.") && !/(^|\/)wikis\//.test(p))
+					.filter((p) => (seenPaths.has(p) ? false : seenPaths.add(p)));
 				const reads = await Promise.all(paths.map((p) => hubble.files.safeRead(p).catch(() => ({ ok: false }))));
 
 				const records = [], tagCounts = {};
 				for (let i = 0; i < paths.length; i++) {
 					const path = paths[i];
-					const name = path.split("/").pop().replace(/\.md$/, "");
+					const name = path.split("/").pop().replace(/\.(md|txt|org)$/, "");
 					const m = name.match(/^(\d{4})-(\d{2})-(\d{2})-(.+?)-[a-z0-9]{6,10}$/);
 					let slug, dateStr = "";
 					if (m) { slug = m[4]; dateStr = `${MONTHS[+m[2] - 1]} ${+m[3]}, ${m[1]}`; }
 					else { slug = name.toLowerCase(); }
 					const res = reads[i];
 					const file = res && res.ok ? res.value : null;
-					const tag = file ? topicTag(file.properties) : null;
+					const tag = file ? firstTopic(tagsFromFile(file, path)) : null;
 					if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
 					records.push({ path, slug, dateStr, tag, body: file && typeof file.body === "string" ? file.body : "" });
 				}

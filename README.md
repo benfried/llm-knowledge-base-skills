@@ -1,13 +1,13 @@
 # LLM knowledge base skills
 
-Agent skills that turn a directory of raw markdown notes into a self-updating knowledge base: tagged and backlinked notes, plus persistent wikis following [Andrej Karpathy's llm-wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
+Agent skills that turn a directory of raw notes — markdown, plain text, or org-mode — into a self-updating knowledge base: tagged and backlinked notes, link-only bookmarks expanded into full web clippings, plus persistent wikis following [Andrej Karpathy's llm-wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
 
 You write things down; agents on a schedule handle the organizing.
 
 ## Install
 
 ```sh
-npx skills add bholmesdev/llm-knowledge-base-skills
+npx skills add benfried/llm-knowledge-base-skills
 ```
 
 ## The skills
@@ -22,6 +22,10 @@ npx skills add bholmesdev/llm-knowledge-base-skills
 | [refresh-wiki-cloud](skills/refresh-wiki-cloud/SKILL.md) | refresh-wiki wrapped the same way for scheduled cloud runs. |
 | [setup-oz-automations](skills/setup-oz-automations/SKILL.md) | Walks your agent through creating the [Oz](https://oz.dev) environment and schedules that run the cloud skills. |
 
+### Clipping pages behind a login
+
+clip-link can also fill in pages you're subscribed to (Substack and similar). Drop your browser session cookies into `~/.config/clip-link/cookies.txt` (Netscape format, `chmod 600`) and it retries paywalled fetches authenticated, clipping only when the full article comes back. [references/extract-cookies.py](skills/clip-link/references/extract-cookies.py) pulls those cookies out of a Chromium browser on macOS; see the skill for the full flow. The jar is a live credential — keep it out of the vault and any repo.
+
 ## Expected vault layout
 
 ```
@@ -31,7 +35,7 @@ your-vault/
 └── tags.md    # the tag registry — seeded by enrich-note on first run
 ```
 
-Tweak the skills to taste if your layout differs. Notes don't have to be markdown: plain-text and org-mode notes are enriched with their own conventions, and notes that contain only a link get expanded into full web clippings by clip-link.
+Tweak the skills to taste if your layout differs — the enrich loop walks the whole vault (skipping the generated `wikis/` layer), so notes can live in any folders you like (`Clippings/`, `Bookmarks/`, and so on), not just `raw/`. Notes don't have to be markdown: plain-text (`.txt`) and org-mode (`.org`) notes are enriched with their own conventions, and notes that contain only a link get expanded into full web clippings by clip-link.
 
 ## Visualizations
 
@@ -44,8 +48,10 @@ Two self-contained HTML apps that build views of your vault in real time. Drop t
 
 ## Running in the cloud
 
-The `-cloud` variants are built for scheduled runners like [Oz](https://oz.dev). They assume the environment setup has synced your vault to `~/vault` with [Obsidian's headless CLI](https://obsidian.md/help/headless). Run the setup-oz-automations skill with your agent to create the environment and schedules — it pulls the skills straight from this repo, so there's nothing to push. Want to tweak the skills? Fork this repo and point the setup skill at your fork instead.
+The `-cloud` variants are built for scheduled runners. They assume the environment has synced your vault to `~/vault` with [Obsidian's headless CLI](https://obsidian.md/help/headless), then run enrichment nightly and the wiki refresh weekly.
+
+The quickest path today is [Oz](https://oz.dev): run the setup-oz-automations skill with your agent and it creates the environment and schedules, pulling the skills straight from this repo. But it's not the only option, and Oz is a young third-party platform — so **[docs/cloud-automation.md](docs/cloud-automation.md) documents three ways to run this on a schedule** (Oz, Claude-native scheduled routines, and a self-hosted GCP job), what each needs, how the clip-link cookie jar is handled in each, and how to move between them if one stops being a good fit.
 
 ## Read the full walkthrough
 
-These skills are [from my post on building a self-updating LLM knowledge base.](https://bholmes.dev/blog/llm-knowledge-bases/)
+These skills started [from Ben Holmes's post on building a self-updating LLM knowledge base](https://bholmes.dev/blog/llm-knowledge-bases/) and have since been customized (multi-format notes, web clipping, and the automation options above).

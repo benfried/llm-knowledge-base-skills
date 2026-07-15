@@ -16,7 +16,9 @@ ob sync
 
 ## 2. Enrich
 
-Run [enrich-notes-loop](../enrich-notes-loop/SKILL.md) with `~/vault` as the vault root. Enrich every note without `enrichedAt`, preserving existing note content.
+Run [enrich-notes-loop](../enrich-notes-loop/SKILL.md) with `~/vault` as the vault root. Enrich every note without a done-stamp (`enrichedAt`, or `#+enriched_at:` for org notes), preserving existing note content.
+
+Link-only notes get expanded into web clippings as part of this, which needs network egress from the sandbox — and, for subscriber-only pages, the clip-link cookie jar at `~/.config/clip-link/cookies.txt` (see [docs/cloud-automation.md](../../docs/cloud-automation.md) for how each platform supplies it). Without the jar, paywalled bookmarks are left untouched rather than half-clipped, so a missing jar degrades gracefully.
 
 ## 3. Push results back
 
