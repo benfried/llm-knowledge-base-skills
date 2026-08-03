@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "statusMessage": "Writing cloud credentials from env",
+            "timeout": 30,
+            "command": "if [ -n \"$OBSIDIAN_AUTH_TOKEN\" ]; then mkdir -p \"$HOME/.obsidian-headless\" && printf \"%s\" \"$OBSIDIAN_AUTH_TOKEN\" > \"$HOME/.obsidian-headless/auth_token\" && chmod 600 \"$HOME/.obsidian-headless/auth_token\"; fi; if [ -n \"$CLIP_LINK_COOKIES_B64\" ]; then mkdir -p \"$HOME/.config/clip-link\" && printf \"%s\" \"$CLIP_LINK_COOKIES_B64\" | base64 -d > \"$HOME/.config/clip-link/cookies.txt\" && chmod 600 \"$HOME/.config/clip-link/cookies.txt\"; fi; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

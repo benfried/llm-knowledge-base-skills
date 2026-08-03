@@ -168,7 +168,9 @@ and decode it here.)
 **Skills location.** The routine clones a GitHub repo purely to source
 `.claude/skills/` and `.claude/settings.json` — separate from your vault, which
 still arrives via `ob sync`. This repo keeps its skills under `skills/`, so
-you'd add a `.claude/skills/` copy (or restructure) for the routine to find them.
+`.claude/skills` is a **symlink to `../skills`** — one source of truth, no
+duplicated copies to drift apart. Verified: Claude Code discovers all seven
+skills through the symlink, `-cloud` variants included.
 
 **Per-run sync** needs no new plumbing — the `-cloud` skill's own `ob sync`
 keeps `~/vault` current once the token file exists.
@@ -186,9 +188,19 @@ keeps `~/vault` current once the token file exists.
 
 1. Add a **setup script** to the routine's cloud environment: `npm install -g obsidian-headless`.
 2. Add **environment variables**: `OBSIDIAN_AUTH_TOKEN`, and `CLIP_LINK_COOKIES_B64` (the jar, base64-encoded).
-3. Add the **`SessionStart` hook** above to `.claude/settings.json` in the repo.
-4. Make the cloud skills discoverable under **`.claude/skills/`** in the repo.
-5. Create two **routines** (`/schedule`): nightly → `enrich-notes-loop-cloud`, weekly → `refresh-wiki-cloud`, on your chosen model.
+3. ~~Add the **`SessionStart` hook**~~ — **done**, see `.claude/settings.json`. It
+   writes each credential only when its env var is set, and always exits 0, so a
+   missing cookie jar degrades gracefully instead of failing the run.
+4. ~~Make the cloud skills discoverable under **`.claude/skills/`**~~ — **done**,
+   via the `.claude/skills -> ../skills` symlink.
+5. Create the **routine(s)** (`/schedule`). The skills' own recommendation is
+   nightly `enrich-notes-loop-cloud` + weekly `refresh-wiki-cloud`; a single
+   nightly routine running both back-to-back also works, at the cost of an extra
+   `ob sync` round-trip per night.
+
+**Timezone caveat.** Routine crons are **UTC only**, so a fixed expression drifts
+an hour across US daylight-saving transitions. `0 6 * * *` is 2am America/New_York
+in EDT and 1am in EST. Adjust the cron twice a year, or accept the drift.
 
 ---
 
