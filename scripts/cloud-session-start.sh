@@ -30,13 +30,29 @@ DEVICE_NAME="${OBSIDIAN_DEVICE_NAME:-claude-routine}"
 
 log() { printf '[cloud-session-start] %s\n' "$1"; }
 
+# Pull the line that actually says what went wrong out of a command's output.
+#
+# `ob` is a Node CLI: on failure it prints the real message first and then a
+# stack trace. Logging the TAIL of that gives you "at z ... at Command.<anonymous>"
+# and hides the cause — which is exactly what happened on the first live run,
+# where a 403 was reported as unreadable stack frames. Prefer the first line
+# that looks like an error; fall back to the first non-empty line.
+first_error() {
+  printf '%s\n' "$1" | grep -m1 -iE 'error|forbidden|denied|unauthor|invalid|not found|[0-9]{3}' \
+    || printf '%s\n' "$1" | grep -m1 -v '^[[:space:]]*$' \
+    || printf 'no output'
+}
+
 # --- 1. Obsidian headless auth token ----------------------------------------
 
 if [ -n "${OBSIDIAN_AUTH_TOKEN:-}" ]; then
   mkdir -p "$HOME/.obsidian-headless"
   printf '%s' "$OBSIDIAN_AUTH_TOKEN" > "$HOME/.obsidian-headless/auth_token"
   chmod 600 "$HOME/.obsidian-headless/auth_token"
-  log "auth token written"
+  # Length only, never the value. A wrong-length token is the single most likely
+  # misconfiguration (env-var fields truncate, and it is easy to paste the wrong
+  # clipboard entry into the wrong box), and it costs nothing to surface.
+  log "auth token written (${#OBSIDIAN_AUTH_TOKEN} chars; expected ~32)"
 else
   log "OBSIDIAN_AUTH_TOKEN is unset - vault sync cannot run"
 fi
@@ -86,6 +102,22 @@ if ob sync-list-local --json 2>/dev/null | grep -qF "\"$VAULT_PATH\""; then
   exit 0
 fi
 
+# Preflight: does this token actually authenticate, and can it see the vault we
+# are about to bind? Distinguishes "credential is wrong" from "sync-setup call
+# is wrong" — two failures that otherwise look identical in the logs.
+probe=$(ob sync-list-remote --json 2>&1); probe_rc=$?
+if [ "$probe_rc" -ne 0 ]; then
+  log "auth token REJECTED by the sync API: $(first_error "$probe")"
+  log "  -> re-copy OBSIDIAN_AUTH_TOKEN from ~/.obsidian-headless/auth_token on a machine where 'ob sync-list-remote' works"
+  exit 0
+fi
+
+visible=$(printf '%s' "$probe" | tr ',' '\n' | grep -o '"name":"[^"]*"' | cut -d'"' -f4 | tr '\n' ' ')
+log "auth token accepted; vaults visible: ${visible:-<none>}"
+if [ -n "$visible" ] && ! printf '%s ' $visible | grep -qF "$VAULT_NAME "; then
+  log "WARNING: '$VAULT_NAME' is not among the visible vaults - check OBSIDIAN_VAULT_NAME"
+fi
+
 if [ -n "${OBSIDIAN_ENCRYPTION_PASSWORD:-}" ]; then
   out=$(ob sync-setup --vault "$VAULT_NAME" --path "$VAULT_PATH" \
           --password "$OBSIDIAN_ENCRYPTION_PASSWORD" \
@@ -100,7 +132,10 @@ fi
 if [ "$rc" -eq 0 ]; then
   log "bound vault '$VAULT_NAME' at $VAULT_PATH"
 else
-  log "sync-setup failed (exit $rc): $(printf '%s' "$out" | tail -3 | tr '\n' ' ')"
+  log "sync-setup failed (exit $rc): $(first_error "$out")"
+  if printf '%s' "$out" | grep -qi 'password'; then
+    log "  -> looks password-related; check OBSIDIAN_ENCRYPTION_PASSWORD"
+  fi
 fi
 
 exit 0
