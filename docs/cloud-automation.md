@@ -155,15 +155,27 @@ clip-link's cloud path needs only `curl` + Python stdlib (both present on Ubuntu
 *extraction*, which runs on your Mac, never in the cloud.
 
 **`SessionStart` hook** (`.claude/settings.json` in the cloned repo, runs every
-firing) — writes the credentials from env vars each run, so rotation is picked up:
+firing) — writes the credentials from env vars each run, so rotation is picked
+up, and binds the vault so `ob sync` has something to sync. The logic lives in
+[../scripts/cloud-session-start.sh](../scripts/cloud-session-start.sh); the hook
+is a one-liner that calls it.
 
-```bash
-mkdir -p ~/.obsidian-headless && printf '%s' "$OBSIDIAN_AUTH_TOKEN" > ~/.obsidian-headless/auth_token
-mkdir -p ~/.config/clip-link && printf '%s' "$CLIP_LINK_COOKIES_B64" | base64 -d > ~/.config/clip-link/cookies.txt && chmod 600 ~/.config/clip-link/cookies.txt
-```
+The script is guarded throughout and always exits 0: a missing cookie jar or a
+`sync-setup` failure degrades gracefully rather than killing the night's run.
+It skips `sync-setup` when the vault is already bound, and redacts the
+encryption password out of any error it prints. (The cookie jar is multi-line,
+so it travels base64-encoded in a single env var and is decoded there.)
 
-(The cookie jar is multi-line, so store it base64-encoded in a single env var
-and decode it here.)
+> ⚠️ **`ob sync-setup` binds the current working directory when `--path` is
+> omitted.** Run it from the wrong folder once and it will bind that folder to
+> your notes vault and start uploading its contents into it. This is not
+> hypothetical — it happened during setup, dumping a dotfiles tree at a notes
+> vault. The script therefore always passes `--path "$HOME/vault"` and
+> `--vault "$OBSIDIAN_VAULT_NAME"` explicitly. Don't "simplify" those away.
+>
+> If it does happen: pause sync in the Obsidian app immediately
+> (`obsidian-cli sync off vault=<name>`) to protect the local copy, then
+> `ob sync-unlink --path <wrong-dir>` before anything else runs.
 
 **Skills location.** The routine clones a GitHub repo purely to source
 `.claude/skills/` and `.claude/settings.json` — separate from your vault, which
@@ -187,9 +199,15 @@ keeps `~/vault` current once the token file exists.
 ### Checklist
 
 1. Add a **setup script** to the routine's cloud environment: `npm install -g obsidian-headless`.
-2. Add **environment variables**: `OBSIDIAN_AUTH_TOKEN`, and `CLIP_LINK_COOKIES_B64` (the jar, base64-encoded).
-3. ~~Add the **`SessionStart` hook**~~ — **done**, see `.claude/settings.json`. It
-   writes each credential only when its env var is set, and always exits 0, so a
+2. Add **environment variables** — `OBSIDIAN_AUTH_TOKEN`,
+   `OBSIDIAN_ENCRYPTION_PASSWORD` (if the vault is end-to-end encrypted, which
+   `sync-setup` needs to bind it), and optionally `CLIP_LINK_COOKIES_B64` (the
+   jar, base64-encoded), `OBSIDIAN_VAULT_NAME` (defaults to `kb`) and
+   `OBSIDIAN_DEVICE_NAME` (defaults to `claude-routine`, and is what shows up in
+   sync version history).
+3. ~~Add the **`SessionStart` hook**~~ — **done**, see `.claude/settings.json`
+   and `scripts/cloud-session-start.sh`. It writes each credential only when its
+   env var is set, binds the vault with `--path` pinned, and always exits 0, so a
    missing cookie jar degrades gracefully instead of failing the run.
 4. ~~Make the cloud skills discoverable under **`.claude/skills/`**~~ — **done**,
    via the `.claude/skills -> ../skills` symlink.
