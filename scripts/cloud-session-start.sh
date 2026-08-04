@@ -71,7 +71,17 @@ if [ -n "${OBSIDIAN_AUTH_TOKEN:-}" ]; then
     || fp=$(printf '%s' "$OBSIDIAN_AUTH_TOKEN" | shasum -a 256 | cut -c1-12)
   log "auth token written (${#OBSIDIAN_AUTH_TOKEN} chars, fingerprint ${fp:-unavailable})"
 else
-  log "OBSIDIAN_AUTH_TOKEN is unset - vault sync cannot run"
+  # No env var — but that is only a problem when there are no stored
+  # credentials either. On a persistent host (a VM where `ob login` ran once),
+  # the token lives in a file and the env var is legitimately absent. A prior
+  # version of this hook unconditionally logged "vault sync cannot run" here;
+  # a nightly agent believed it, treated it as an authentication failure, and
+  # stopped without ever trying `ob`. Only raise the alarm when it is true.
+  if [ -s "$HOME/.obsidian-headless/auth_token" ] || [ -s "${XDG_CONFIG_HOME:-$HOME/.config}/obsidian-headless/auth_token" ]; then
+    log "using stored ob credentials (no OBSIDIAN_AUTH_TOKEN env var; token file present)"
+  else
+    log "no Obsidian credentials: OBSIDIAN_AUTH_TOKEN unset and no stored auth_token file - vault sync cannot run"
+  fi
 fi
 
 # --- 2. clip-link cookie jar (optional) -------------------------------------
@@ -88,6 +98,8 @@ if [ -n "${CLIP_LINK_COOKIES_B64:-}" ]; then
     rm -f "$HOME/.config/clip-link/cookies.txt"
     log "CLIP_LINK_COOKIES_B64 did not base64-decode - continuing without a jar"
   fi
+elif [ -s "$HOME/.config/clip-link/cookies.txt" ]; then
+  log "using existing cookie jar at ~/.config/clip-link/cookies.txt"
 else
   log "no cookie jar - paywalled bookmarks will be left as bookmarks"
 fi
@@ -106,18 +118,25 @@ if ! command -v ob >/dev/null 2>&1; then
   exit 0
 fi
 
-if [ -z "${OBSIDIAN_AUTH_TOKEN:-}" ]; then
+# Idempotent: the binding survives on persistent hosts and inside a session,
+# and re-running sync-setup over an existing bind is pointless noise. Check
+# BEFORE the credential gate: an already-bound vault (a VM set up with an
+# interactive `ob login`) needs no env var at all, and this hook must say so
+# plainly rather than exiting in silence.
+if ob sync-list-local --json 2>/dev/null | grep -qF "\"$VAULT_PATH\""; then
+  log "vault already bound at $VAULT_PATH - ready to sync"
+  exit 0
+fi
+
+# From here on we would be BINDING a vault for the first time, which does need
+# a credential from somewhere: the env var, or a stored token file.
+if [ -z "${OBSIDIAN_AUTH_TOKEN:-}" ] \
+   && [ ! -s "$HOME/.obsidian-headless/auth_token" ] \
+   && [ ! -s "${XDG_CONFIG_HOME:-$HOME/.config}/obsidian-headless/auth_token" ]; then
   exit 0
 fi
 
 mkdir -p "$VAULT_PATH"
-
-# Idempotent: the binding survives inside a session, and re-running sync-setup
-# over an existing bind is pointless noise.
-if ob sync-list-local --json 2>/dev/null | grep -qF "\"$VAULT_PATH\""; then
-  log "vault already bound at $VAULT_PATH"
-  exit 0
-fi
 
 # Preflight: does this token actually authenticate, and can it see the vault we
 # are about to bind? Distinguishes "credential is wrong" from "sync-setup call
