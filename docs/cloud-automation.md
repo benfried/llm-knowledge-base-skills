@@ -126,6 +126,23 @@ To set it up, run the setup-oz-automations skill with your agent.
 
 ## Option B — Claude-native scheduled routines
 
+> ⚠️ **Verified broken as of Aug 2026: do not use this option as written.**
+> `api.obsidian.md` sits behind Cloudflare, and Cloudflare rejects the
+> Anthropic sandbox's datacenter egress with a bare `HTTP Error 403` — the
+> request never reaches Obsidian's application. The token was never the
+> problem: the identical token worked from a residential IP while 403ing from
+> the sandbox, and `ob login` itself would hit the same edge block.
+>
+> **How to tell an edge block from a bad credential:** `ob`'s application
+> errors come back as HTTP 200 with a JSON `{error}` and print as readable
+> messages; a **bare** `HTTP Error 403` means the request was rejected before
+> reaching the application. No credential fix helps with the latter.
+>
+> The section is kept for the routine/environment mechanics (hook, env vars,
+> skills discovery), which are correct and reusable on any runner whose egress
+> Cloudflare accepts — see the **persistent VM variant** under Option C, which
+> is the deployment that actually works.
+
 Claude Code can run **scheduled cloud agents ("routines")** on a cron in
 Anthropic's own cloud — no third-party scheduler. This trades away Oz's
 open-weight models and dedicated secret store, but removes a vendor from the
@@ -224,8 +241,39 @@ in EDT and 1am in EST. Adjust the cron twice a year, or accept the drift.
 
 ## Option C — Self-hosted on GCP
 
-Maximum control, no scheduler vendor beyond GCP + Anthropic. You own a container
-and a cron trigger.
+Maximum control, no scheduler vendor beyond GCP + Anthropic. Two shapes: a
+**persistent VM** (deployed and working — see below) or a container job
+(sketched after it).
+
+### Variant C1 — persistent VM (the deployment that works)
+
+An always-on VM you already have (here: `carbonsteel`, Ubuntu, reached via a
+gcloud IAP tunnel) sidesteps every credential-transplant problem: there is no
+snapshot lifecycle and no env-var secret store, because **every credential is
+minted on the VM itself, once, interactively** and persists in the home
+directory like on a laptop:
+
+- `ob login` on the VM → its own auth token (nothing copied from another
+  machine, nothing to go stale in an env var).
+- `ob sync-setup --vault kb --path ~/vault --device-name <host>` once —
+  `--path` pinned, per the warning above.
+- `claude` login once (subscription OAuth) → persistent CLI credentials.
+- Cookie jar `scp`'d to `~/.config/clip-link/cookies.txt` (`chmod 600`).
+
+Nightly runs are a `~/bin/kb-nightly.sh` that pulls this repo, then runs
+`claude -p` with the enrich → wiki → run-record prompt, invoked by a **systemd
+user timer** (`OnCalendar=*-*-* 02:07:00 America/New_York` — DST-correct on a
+UTC box, unlike raw cron) with `Persistent=true` and lingering enabled.
+
+**Before assuming any runner can work, run the egress test from it:**
+
+```sh
+curl -s -o /dev/null -w '%{http_code}\n' -X POST \
+  -H 'Content-Type: application/json' -d '{}' https://api.obsidian.md/user/info
+# 200 (a JSON app response) = usable; bare 403 = Cloudflare-blocked, stop here.
+```
+
+### Variant C2 — container job (sketch, unverified)
 
 ### Architecture
 

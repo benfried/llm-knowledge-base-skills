@@ -46,9 +46,18 @@ first_error() {
 # --- 1. Obsidian headless auth token ----------------------------------------
 
 if [ -n "${OBSIDIAN_AUTH_TOKEN:-}" ]; then
-  mkdir -p "$HOME/.obsidian-headless"
-  printf '%s' "$OBSIDIAN_AUTH_TOKEN" > "$HOME/.obsidian-headless/auth_token"
-  chmod 600 "$HOME/.obsidian-headless/auth_token"
+  # Two facts about `ob`'s token resolution, both read from cli.js source
+  # (neither is in the README or help.obsidian.md):
+  #   1. It checks the OBSIDIAN_AUTH_TOKEN env var BEFORE any file — so in an
+  #      environment that sets the var, these files are belt-and-braces.
+  #   2. The file path is platform-dependent: macOS uses ~/.obsidian-headless,
+  #      Linux uses XDG (~/.config/obsidian-headless). Write both; a wrong
+  #      single choice here cost a debugging cycle on the Linux sandbox.
+  for _obdir in "$HOME/.obsidian-headless" "${XDG_CONFIG_HOME:-$HOME/.config}/obsidian-headless"; do
+    mkdir -p "$_obdir"
+    printf '%s' "$OBSIDIAN_AUTH_TOKEN" > "$_obdir/auth_token"
+    chmod 600 "$_obdir/auth_token"
+  done
   # Length and a hash prefix — never the value itself.
   #
   # Length alone is not enough: the auth token is 32 lowercase hex characters,
