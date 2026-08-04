@@ -49,10 +49,18 @@ if [ -n "${OBSIDIAN_AUTH_TOKEN:-}" ]; then
   mkdir -p "$HOME/.obsidian-headless"
   printf '%s' "$OBSIDIAN_AUTH_TOKEN" > "$HOME/.obsidian-headless/auth_token"
   chmod 600 "$HOME/.obsidian-headless/auth_token"
-  # Length only, never the value. A wrong-length token is the single most likely
-  # misconfiguration (env-var fields truncate, and it is easy to paste the wrong
-  # clipboard entry into the wrong box), and it costs nothing to surface.
-  log "auth token written (${#OBSIDIAN_AUTH_TOKEN} chars; expected ~32)"
+  # Length and a hash prefix — never the value itself.
+  #
+  # Length alone is not enough: the auth token is 32 lowercase hex characters,
+  # which is the same shape as an Obsidian vault ID. Copying the vault ID into
+  # this variable produces a 32-char value that passes every superficial check
+  # and then 403s. The fingerprint is a SHA-256 prefix, so it is safe to paste
+  # into a chat or ticket, and comparing it against the fingerprint of
+  # ~/.obsidian-headless/auth_token on a working machine settles in one glance
+  # whether the right secret is loaded.
+  fp=$(printf '%s' "$OBSIDIAN_AUTH_TOKEN" | sha256sum 2>/dev/null | cut -c1-12) \
+    || fp=$(printf '%s' "$OBSIDIAN_AUTH_TOKEN" | shasum -a 256 | cut -c1-12)
+  log "auth token written (${#OBSIDIAN_AUTH_TOKEN} chars, fingerprint ${fp:-unavailable})"
 else
   log "OBSIDIAN_AUTH_TOKEN is unset - vault sync cannot run"
 fi
