@@ -265,6 +265,14 @@ Nightly runs are a `~/bin/kb-nightly.sh` that pulls this repo, then runs
 user timer** (`OnCalendar=*-*-* 02:07:00 America/New_York` — DST-correct on a
 UTC box, unlike raw cron) with `Persistent=true` and lingering enabled.
 
+**Observability without new credentials:** every run appends one line to
+`wikis/kb/log.md` under `## Run history` (no-ops included), and Obsidian Sync
+carries it to every device — the vault is the audit trail. On the Mac,
+[scripts/kb-morning-check.sh](../scripts/kb-morning-check.sh) (fired by a
+launchd agent each morning) reads the newest line and raises a notification:
+the summary when the run landed, a MISSING alert when it didn't — judged by
+age, not date, so a late-waking Mac still reports correctly.
+
 **Before assuming any runner can work, run the egress test from it:**
 
 ```sh
