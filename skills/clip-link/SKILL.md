@@ -16,6 +16,8 @@ A note qualifies when, ignoring frontmatter and blank lines, its whole content i
 
 A stray word or two around the link is fine. A note with real prose is **not** link-only — leave it alone.
 
+If the URL is a YouTube video, hand off to [clip-youtube](../clip-youtube/SKILL.md) — a video page has no article to extract; that skill clips its transcript instead.
+
 ## 2. Check for an existing clipping first
 
 Before fetching, grep the vault's frontmatter for a `source:` matching the URL (ignore a trailing-slash difference). If a clipping already exists, **do not re-clip**: leave the bookmark note untouched and report the duplicate so the user can decide whether to delete the redundant bookmark.

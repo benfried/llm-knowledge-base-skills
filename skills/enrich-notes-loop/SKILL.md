@@ -17,6 +17,6 @@ Also skip, permanently and without stamping:
 - **Vault scaffolding** — Obsidian's starter `Welcome.md` and the like: boilerplate with no knowledge content.
 - **Link-only notes whose fetch fails** (paywall, JS-only shell, 404) — leave them as bookmarks per clip-link's rule; they'll be retried naturally on a later run.
 
-If a note is link-only (just a URL or a lone link), run [clip-link](../clip-link/SKILL.md) on it first, then enrich the clipping it produces.
+If a note is link-only (just a URL or a lone link), run [clip-link](../clip-link/SKILL.md) on it first — [clip-youtube](../clip-youtube/SKILL.md) if it's a YouTube video — then enrich the clipping it produces.
 
 This runs unattended: keep going until every note is enriched. Don't delete anything.

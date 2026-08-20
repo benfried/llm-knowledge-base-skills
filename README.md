@@ -15,6 +15,7 @@ npx skills add benfried/llm-knowledge-base-skills
 | Skill | What it does |
 | --- | --- |
 | [clip-link](skills/clip-link/SKILL.md) | Turn a link-only note (a bare URL or lone markdown/org link) into a full web clipping following [Obsidian Web Clipper](https://obsidian.md/clipper) conventions — same frontmatter, same markdown rendering of the page. |
+| [clip-youtube](skills/clip-youtube/SKILL.md) | The same, for YouTube bookmarks: same frontmatter (plus a written summary), with the video's transcript — fetched with `yt-dlp`, reflowed into readable timestamped paragraphs — as the body. |
 | [enrich-note](skills/enrich-note/SKILL.md) | Enrich one note with topic tags (from a shared [tag registry](skills/enrich-note/references/tags.md)), source attribution, and links to related notes. Handles markdown, plain-text, and org-mode notes. |
 | [enrich-notes-loop](skills/enrich-notes-loop/SKILL.md) | Run enrich-note across every un-enriched note in the vault, unattended. Uses an `enrichedAt` frontmatter stamp to skip finished notes. |
 | [refresh-wiki](skills/refresh-wiki/SKILL.md) | Maintain every llm-wiki under `wikis/`: ingest new source notes, update entity/concept pages, and lint for stale claims and orphan pages. |
@@ -35,7 +36,7 @@ your-vault/
 └── tags.md    # the tag registry — seeded by enrich-note on first run
 ```
 
-Tweak the skills to taste if your layout differs — the enrich loop walks the whole vault (skipping the generated `wikis/` layer), so notes can live in any folders you like (`Clippings/`, `Bookmarks/`, and so on), not just `raw/`. Notes don't have to be markdown: plain-text (`.txt`) and org-mode (`.org`) notes are enriched with their own conventions, and notes that contain only a link get expanded into full web clippings by clip-link.
+Tweak the skills to taste if your layout differs — the enrich loop walks the whole vault (skipping the generated `wikis/` layer), so notes can live in any folders you like (`Clippings/`, `Bookmarks/`, and so on), not just `raw/`. Notes don't have to be markdown: plain-text (`.txt`) and org-mode (`.org`) notes are enriched with their own conventions, and notes that contain only a link get expanded into full web clippings by clip-link — or, for YouTube links, into transcript clippings by clip-youtube.
 
 ## Visualizations
 

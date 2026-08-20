@@ -16,7 +16,7 @@ Don't assume markdown-with-frontmatter — notes may also be plain text or org-m
 
 - **Markdown or plain text** (`.md`, `.txt`): metadata goes in YAML frontmatter as described below; add the frontmatter block if the note doesn't have one yet.
 - **Org-mode** (`.org`): don't bolt YAML onto org. Use org conventions for the same metadata: `#+filetags: :tag-one:tag-two:` for tags, `#+source:` / `#+url:` keyword lines for attribution, a trailing `* Related` heading with `[[file:path.org][Alias]]` links, and `#+enriched_at: <ISO timestamp>` as the done-stamp instead of `enrichedAt`.
-- **Link-only notes** (the content is just a URL or a lone markdown/org link): run [clip-link](../clip-link/SKILL.md) first to expand it into a web clipping, then enrich the result.
+- **Link-only notes** (the content is just a URL or a lone markdown/org link): run [clip-link](../clip-link/SKILL.md) first to expand it into a web clipping — or [clip-youtube](../clip-youtube/SKILL.md) if the link is a YouTube video — then enrich the result.
 
 ## 1. Tags
 

@@ -44,6 +44,7 @@ oz environment create \
   --docker-image "warpdotdev/dev-base:latest-agents" \
   --repo "benfried/llm-knowledge-base-skills" \
   --setup-command 'npm install -g obsidian-headless' \
+  --setup-command 'pipx install yt-dlp' \
   --setup-command 'mkdir -p ~/.obsidian-headless && printf "%s" "$OBSIDIAN_AUTH_TOKEN" > ~/.obsidian-headless/auth_token' \
   --setup-command 'mkdir -p ~/vault && cd ~/vault && ob sync-setup --vault VAULT_NAME && ob sync'
 ```

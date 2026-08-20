@@ -165,11 +165,17 @@ stack. Configuration is split across two layers plus the repo.
 ```bash
 #!/bin/bash
 npm install -g obsidian-headless
+pipx install yt-dlp   # clip-youtube; apt's yt-dlp is too stale to keep working
 ```
 
 clip-link's cloud path needs only `curl` + Python stdlib (both present on Ubuntu
 24.04), so there's no `pip install` — `cryptography` is only for cookie
-*extraction*, which runs on your Mac, never in the cloud.
+*extraction*, which runs on your Mac, never in the cloud. clip-youtube adds the
+one real dependency, `yt-dlp` (installed above via pipx, not apt — the apt
+package lags too far behind YouTube's changes). Note that YouTube bot-checks
+datacenter IPs aggressively; clip-youtube can retry with `youtube.com` cookies
+from the clip-link jar, and without them it degrades the same graceful way —
+the bookmark is left untouched and the failure reported.
 
 **`SessionStart` hook** (`.claude/settings.json` in the cloned repo, runs every
 firing) — writes the credentials from env vars each run, so rotation is picked
