@@ -2,8 +2,10 @@
 #
 # Morning check for the nightly KB run — Mac side.
 #
-# The nightly runner (on whatever machine runs it; currently the carbonsteel
-# VM) appends one line per run to wikis/kb/log.md under "## Run history", and
+# The nightly runner (on whatever machine runs it; currently this Mac, via
+# the com.benfried.kb-nightly launchd agent against the headless vault copy
+# at ~/vault) appends one line per run to wikis/kb/log.md under
+# "## Run history", and
 # Obsidian Sync carries that line to every device. This script, fired by a
 # launchd agent each morning, reads the newest line and raises a macOS
 # notification: the summary when last night's run landed, an alert when it
@@ -13,9 +15,11 @@
 # Freshness is judged by AGE (default: anything under 30h counts), not by
 # matching today's date — so a Mac that wakes late still reports correctly.
 #
-# Caveat this script is honest about: the line arrives via Obsidian Sync, so
-# if Obsidian.app is not running the record may simply not have synced yet.
-# The MISSING alert says so when that is the case.
+# Caveat this script is honest about: the line still arrives via Obsidian
+# Sync — the nightly writes it to the headless copy at ~/vault and its final
+# `ob sync` pushes it; this script reads the app-managed vault, which only
+# pulls while Obsidian.app runs. A MISSING alert can therefore mean "the
+# headless push failed" or just "the app hasn't pulled yet"; the alert says so.
 
 set -u
 
@@ -39,7 +43,7 @@ fi
 line=$(awk '/^## Run history/{f=1;next} f&&/^- [0-9]/{l=$0} END{print l}' "$LOG")
 
 if [ -z "$line" ]; then
-  notify "KB nightly: NO RUN RECORD" "log.md has no Run history entries. Check the runner: systemctl --user status kb-nightly on carbonsteel." "Basso"
+  notify "KB nightly: NO RUN RECORD" "log.md has no Run history entries. Check the runner: launchctl print gui/\$(id -u)/com.benfried.kb-nightly and ~/kb-logs/." "Basso"
   exit 0
 fi
 
@@ -59,7 +63,7 @@ if [ "$run_epoch" -gt 0 ] && [ "$age_h" -le "$MAX_AGE_HOURS" ]; then
   notify "KB nightly OK (${age_h}h ago)" "$summary" "Glass"
 else
   extra=""
-  pgrep -xq Obsidian || extra=" NOTE: Obsidian is not running, so the record may not have synced yet - open Obsidian and re-check."
+  pgrep -xq Obsidian || extra=" NOTE: Obsidian is not running, so a record pushed by the nightly's headless copy may not have been pulled here yet - open Obsidian and re-check; if it still doesn't appear, check ~/kb-logs/."
   notify "KB nightly MISSING" "Newest record is ${age_h}h old: ${summary}.${extra}" "Basso"
 fi
 

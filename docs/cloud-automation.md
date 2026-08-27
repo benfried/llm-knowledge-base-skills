@@ -251,20 +251,30 @@ Maximum control, no scheduler vendor beyond GCP + Anthropic. Two shapes: a
 **persistent VM** (deployed and working — see below) or a container job
 (sketched after it).
 
-### Variant C1 — persistent VM (the deployment that works)
+### Variant C1 — persistent host (the deployment that works)
 
-An always-on VM you already have (here: `carbonsteel`, Ubuntu, reached via a
-gcloud IAP tunnel) sidesteps every credential-transplant problem: there is no
-snapshot lifecycle and no env-var secret store, because **every credential is
-minted on the VM itself, once, interactively** and persists in the home
-directory like on a laptop:
+> **Where it runs now:** the desktop Mac, natively, as of 2026-08-27 — launchd
+> (`com.benfried.kb-nightly`, 02:07 local) instead of a systemd timer, same
+> script and prompt. The move retired the whole datacenter-egress failure class
+> (Reddit/OpenReview/Akamai blocks) and made the cookie jar **native**:
+> `extract-cookies.py` runs against local Chrome + Keychain, no `scp`. The
+> "KB nightly migration runbook" note in the vault records the full port. The
+> VM recipe below (run on `carbonsteel` until the cutover) remains the
+> reference for any future always-on-host deployment.
+
+An always-on host you already have (a VM like `carbonsteel` — Ubuntu, reached
+via a gcloud IAP tunnel — or the desktop itself) sidesteps every
+credential-transplant problem: there is no snapshot lifecycle and no env-var
+secret store, because **every credential is minted on the host itself, once,
+interactively** and persists in the home directory like on a laptop:
 
 - `ob login` on the VM → its own auth token (nothing copied from another
   machine, nothing to go stale in an env var).
 - `ob sync-setup --vault kb --path ~/vault --device-name <host>` once —
   `--path` pinned, per the warning above.
 - `claude` login once (subscription OAuth) → persistent CLI credentials.
-- Cookie jar `scp`'d to `~/.config/clip-link/cookies.txt` (`chmod 600`).
+- Cookie jar at `~/.config/clip-link/cookies.txt` (`chmod 600`) — extracted
+  natively when the host is the Mac itself; `scp`'d from the Mac when it isn't.
 
 Nightly runs are a `~/bin/kb-nightly.sh` that pulls this repo, then runs
 `claude -p` with the enrich → wiki → run-record prompt, invoked by a **systemd
@@ -386,7 +396,7 @@ active platform uses. Sketch:
 python3 /path/to/skills/clip-link/references/extract-cookies.py \
   --profile "$HOME/Library/Application Support/Google/Chrome Dev/Default" \
   --keychain "Chrome Safe Storage" \
-  --host substack.com --host <your-other-subscription-domains> \
+  --host substack.com --host pragmaticengineer.com --host groundlevel-ai.com \
   --out "$HOME/.config/clip-link/cookies.txt"
 
 # then push to the platform, e.g.:
