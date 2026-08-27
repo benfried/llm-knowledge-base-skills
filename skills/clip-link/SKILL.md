@@ -87,7 +87,7 @@ Then extract (the Keychain service is `Chrome Safe Storage` for every Chrome cha
 python3 references/extract-cookies.py \
   --profile "$HOME/Library/Application Support/Google/Chrome Dev/<Profile Dir>" \
   --keychain "Chrome Safe Storage" \
-  --host substack.com --host pragmaticengineer.com \
+  --host substack.com --host pragmaticengineer.com --host groundlevel-ai.com \
   --out "$HOME/.config/clip-link/cookies.txt"
 ```
 
@@ -97,4 +97,20 @@ Cookie hygiene: the jar is a credential. Never copy it — or any cookie value �
 
 ## 6. When the fetch fails
 
-Paywall you can't unlock, JS-only shell, bot block, 404: **leave the note exactly as it was** and report the URL and the failure. A link-only note is still a bookmark; a broken half-clipping is worse.
+Paywall you can't unlock, JS-only shell, bot block, 404: **leave the note's content exactly as it was** and report the URL and the failure. A link-only note is still a bookmark; a broken half-clipping is worse.
+
+Do record the failure, though, so repeated runs don't retry the same dead URL forever (one bookmark once burned 24 straight nightly runs). Add bookkeeping keys to the note's frontmatter — content untouched:
+
+```md
+---
+clipAttempts: 3
+lastClipError: "reddit 403 bot block"
+lastClipTry: 2026-08-27
+---
+```
+
+- `clipAttempts`: increment on every failed attempt (start at 1). Reset to nothing — remove all three keys — on a successful clip.
+- `lastClipError`: a short, *stable* reason string ("paywall", "cloudflare turnstile", "reddit 403 bot block", "js-only shell", "404"). Keep the wording consistent across runs so identical failures are recognizable.
+- `lastClipTry`: today's date.
+
+**Parking.** When `clipAttempts` reaches 5 with the same `lastClipError`, add `clipParked: true` and stop retrying — the URL needs something a plain fetch can't provide (a real browser, a human click, or the content simply doesn't exist). Parked bookmarks are skipped by [enrich-notes-loop](../enrich-notes-loop/SKILL.md) and swept instead by [clip-link-browser](../clip-link-browser/SKILL.md), which drives a real logged-in browser. Removing `clipParked` (or a successful browser-assisted clip) puts the note back in circulation. Media-only links that can never yield an article (Google Photos shares and the like) may be parked immediately with `lastClipError: "media-only link"` — no five-strike wait.

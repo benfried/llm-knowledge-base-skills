@@ -15,7 +15,10 @@ Also skip, permanently and without stamping:
 
 - **`tags.md`** — it's the tag registry this process *reads*, not a note; enriching it would be circular.
 - **Vault scaffolding** — Obsidian's starter `Welcome.md` and the like: boilerplate with no knowledge content.
-- **Link-only notes whose fetch fails** (paywall, JS-only shell, 404) — leave them as bookmarks per clip-link's rule; they'll be retried naturally on a later run.
+- **Parked bookmarks** — link-only notes with `clipParked: true` in frontmatter. Don't re-fetch and don't stamp; they're waiting for [clip-link-browser](../clip-link-browser/SKILL.md) or a human. Do list them once, in one line, in the run's final report ("parked: N — <note names>") so they stay visible without burning a retry.
+- **Media-only links** — bookmarks whose URL can never yield an article (Google Photos and other photo/video share links, image hosts). Permanently out of scope: park them on sight (`clipParked: true`, `lastClipError: "media-only link"`) instead of retrying a clip that cannot exist.
+
+Link-only notes whose fetch fails (paywall, JS-only shell, bot block, 404) are left as bookmarks per clip-link's rule — but record the failure with clip-link's §6 bookkeeping (`clipAttempts`/`lastClipError`/`lastClipTry`), which parks the note automatically after 5 identical failures instead of retrying forever.
 
 If a note is link-only (just a URL or a lone link), run [clip-link](../clip-link/SKILL.md) on it first — [clip-youtube](../clip-youtube/SKILL.md) if it's a YouTube video — then enrich the clipping it produces.
 
