@@ -13,6 +13,8 @@ Then walk every note in the vault — markdown, plain text, and org-mode (`.md`,
 
 Also skip, permanently and without stamping:
 
+- **The `Private/` folder** — if a `Private/` folder exists at the vault root, nothing under it is ever read, enriched, clipped, or stamped. It's the user's space for notes that are just notes; agents keep out entirely.
+- **Notes flagged `private`** — same treatment for any note carrying a `private` tag (inline or frontmatter), wherever it lives. The flag is the user's (see the vault `tags.md` Flags section); never add or remove it.
 - **`tags.md`** — it's the tag registry this process *reads*, not a note; enriching it would be circular.
 - **Vault scaffolding** — Obsidian's starter `Welcome.md` and the like: boilerplate with no knowledge content.
 - **Parked bookmarks** — link-only notes with `clipParked: true` in frontmatter. Don't re-fetch and don't stamp; they're waiting for [clip-link-browser](../clip-link-browser/SKILL.md) or a human. Do list them once, in one line, in the run's final report ("parked: N — <note names>") so they stay visible without burning a retry.
