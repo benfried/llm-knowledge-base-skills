@@ -61,6 +61,7 @@ Article body…
 - `author` is a list of wikilinked names; leave the key empty (`author:`) when there's no identifiable author. Same for `published` and `description`.
 - `created` is today's date.
 - Merge, don't clobber: if the link note already had frontmatter (tags, notes-to-self), carry those fields over; add `clippings` to its tags rather than replacing them.
+- Inline `#tags` count too: if the original note body had tags typed next to the link (e.g. a workflow flag like `#acm-queue` — see the vault's `tags.md` Flags section), move each one into the frontmatter tag list before replacing the body. Replacing the body must never lose a tag the user typed.
 
 File handling: overwrite the note in place and keep it in its folder. Keep its filename if it's already human-readable; if it's a raw URL or slug, rename to the page title with filename-illegal characters (`\ / : * ? " < > |`) replaced — the Web Clipper's naming rule.
 
