@@ -79,7 +79,7 @@ The full video description, with bare URLs made into links…
 - `description` is the first paragraph of the video description; skip the `## Description` section entirely if the description is empty or pure link spam.
 - `summary` is yours to write, from the transcript: two or three sentences on what the video actually covers and concludes. This is the one place the skill summarizes rather than transcribes — keep it factual, no evaluation. (Unlike other keys, it's never blank: if you have a transcript, you can write it.)
 - Merge, don't clobber: carry over any frontmatter the bookmark already had; add `clippings` and `youtube` to its tags rather than replacing them.
-- Inline `#tags` count too: if the original note body had tags typed next to the link (e.g. a workflow flag like `#acm-queue`), move each one into the frontmatter tag list before replacing the body. Replacing the body must never lose a tag the user typed.
+- Inline `#tags` count too: if the original note body had tags typed next to the link (e.g. a workflow flag like `#acm-queue`), move each one into the frontmatter tag list before replacing the body. Replacing the body must never lose a tag the user typed. The vault `tags.md` Flags section may define shorthands (e.g. `queue` for `acm-queue`) — write the canonical form to frontmatter, not the shorthand.
 
 File handling follows clip-link: overwrite in place, keep a human-readable filename, otherwise rename to the video title with filename-illegal characters (`\ / : * ? " < > |`) replaced.
 
